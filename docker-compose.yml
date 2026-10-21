@@ -1,0 +1,146 @@
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: carebridge-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - carebridge-net
+
+  eureka-server:
+    build: ./backend/eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - carebridge-net
+
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: api-gateway
+    depends_on:
+      - eureka-server
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+    networks:
+      - carebridge-net
+
+  auth-service:
+    build: ./backend/auth-service
+    container_name: auth-service
+    depends_on:
+      - eureka-server
+      - mongodb
+    ports:
+      - "8081:8081"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      MONGODB_URI: "mongodb://mongodb:27017/carebridge_auth_db"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+    networks:
+      - carebridge-net
+
+  patient-service:
+    build: ./backend/patient-service
+    container_name: patient-service
+    depends_on:
+      - eureka-server
+      - mongodb
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      MONGODB_URI: "mongodb://mongodb:27017/carebridge_patient_db"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+    networks:
+      - carebridge-net
+
+  provider-service:
+    build: ./backend/provider-service
+    container_name: provider-service
+    depends_on:
+      - eureka-server
+      - mongodb
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      MONGODB_URI: "mongodb://mongodb:27017/carebridge_provider_db"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+    networks:
+      - carebridge-net
+
+  appointment-service:
+    build: ./backend/appointment-service
+    container_name: appointment-service
+    depends_on:
+      - eureka-server
+      - mongodb
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      MONGODB_URI: "mongodb://mongodb:27017/carebridge_appointment_db"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+    networks:
+      - carebridge-net
+
+  notification-service:
+    build: ./backend/notification-service
+    container_name: notification-service
+    depends_on:
+      - eureka-server
+      - mongodb
+    ports:
+      - "8085:8085"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      MONGODB_URI: "mongodb://mongodb:27017/carebridge_notification_db"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+    networks:
+      - carebridge-net
+
+  ai-agent-service:
+    build: ./backend/ai-agent-service
+    container_name: ai-agent-service
+    depends_on:
+      - eureka-server
+      - mongodb
+    ports:
+      - "8086:8086"
+    environment:
+      EUREKA_URI: "http://eureka-server:8761/eureka/"
+      MONGODB_URI: "mongodb://mongodb:27017/carebridge_agent_db"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:?Set GEMINI_API_KEY in .env}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-3.8-flash}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-5-mini}"
+    networks:
+      - carebridge-net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: "http://localhost:8080"
+    container_name: carebridge-frontend
+    depends_on:
+      - api-gateway
+    ports:
+      - "3000:80"
+    networks:
+      - carebridge-net
+
+networks:
+  carebridge-net:
+    driver: bridge
+
+volumes:
+  mongo-data:
